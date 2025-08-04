@@ -32,3 +32,17 @@ class HealthCheckView(APIView):
             "database": "connected" if db_healthy else "disconnected",
             "cache": "connected" if cache_healthy else "disconnected"
         }, status=status_code)
+
+class RootAPIView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        return Response({
+            "message": "API is running",
+            "endpoints": {
+                "health_check": "/api/core/health/",
+                "register": "/api/accounts/register/",
+                "login": "/api/accounts/login/",
+                "docs": "/swagger/"
+            }
+        })
