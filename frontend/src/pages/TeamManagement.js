@@ -9,6 +9,7 @@ const TeamManagement = () => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [debugInfo, setDebugInfo] = useState(null);
 
   useEffect(() => {
     fetchTeamMembers();
@@ -17,11 +18,37 @@ const TeamManagement = () => {
   const fetchTeamMembers = async () => {
     try {
       setLoading(true);
+      setError('');
+      
+      console.log('Fetching team members for user:', user);
+      
       const response = await axios.get('/accounts/manager/team/');
-      setTeamMembers(response.data);
+      console.log('Team members response:', response.data);
+      
+      setTeamMembers(response.data || []);
     } catch (error) {
       console.error('Error fetching team members:', error);
-      setError('Failed to load team members');
+      
+      // Get more detailed error information
+      let errorMessage = 'Failed to load team members';
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        errorMessage = error.response.data?.detail || `HTTP ${error.response.status}: ${error.response.statusText}`;
+      } else if (error.request) {
+        console.error('Error request:', error.request);
+        errorMessage = 'Network error - unable to reach server';
+      }
+      
+      setError(errorMessage);
+      
+      // Try to get debug information
+      try {
+        const debugResponse = await axios.get('/accounts/debug/manager/team/');
+        console.log('Debug info:', debugResponse.data);
+        setDebugInfo(debugResponse.data);
+      } catch (debugError) {
+        console.error('Debug request also failed:', debugError);
+      }
     } finally {
       setLoading(false);
     }
@@ -65,7 +92,7 @@ const TeamManagement = () => {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
-                {user?.username}
+                {user?.username} ({user?.role})
               </span>
               <button
                 onClick={() => navigate('/dashboard')}
@@ -100,16 +127,35 @@ const TeamManagement = () => {
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
+              <p className="font-medium">Error:</p>
+              <p>{error}</p>
+              
+              {debugInfo && (
+                <details className="mt-4">
+                  <summary className="cursor-pointer font-medium">Debug Information (Click to expand)</summary>
+                  <div className="mt-2 p-3 bg-gray-100 rounded text-sm">
+                    <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+                  </div>
+                </details>
+              )}
             </div>
           )}
 
-          {teamMembers.length === 0 ? (
+          {teamMembers.length === 0 && !error ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No team members found.</p>
               <p className="text-gray-400 text-sm mt-2">
                 Contact your admin to assign team members to you.
               </p>
+              
+              {debugInfo && (
+                <details className="mt-4 max-w-2xl mx-auto">
+                  <summary className="cursor-pointer text-blue-600">View Debug Information</summary>
+                  <div className="mt-2 p-3 bg-gray-100 rounded text-sm text-left">
+                    <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+                  </div>
+                </details>
+              )}
             </div>
           ) : (
             <div className="grid gap-6">
@@ -130,12 +176,12 @@ const TeamManagement = () => {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                                             <button
-                         onClick={() => navigate(`/manager-assign-task/${member.id}`)}
-                         className="btn-primary text-sm"
-                       >
-                         Assign Task
-                       </button>
+                      <button
+                        onClick={() => navigate(`/manager-assign-task/${member.id}`)}
+                        className="btn-primary text-sm"
+                      >
+                        Assign Task
+                      </button>
                       <button
                         onClick={() => navigate(`/member-tasks/${member.id}`)}
                         className="btn-secondary text-sm"
@@ -183,4 +229,4 @@ const TeamManagement = () => {
   );
 };
 
-export default TeamManagement; 
+export default TeamManagement;

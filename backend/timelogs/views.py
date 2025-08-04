@@ -6,6 +6,10 @@ from .serializers import TimeLogSerializer
 from accounts.models import User
 
 class IsAdminManagerOrOwner(permissions.BasePermission):
+    def has_permission(self, request, view):
+        # Allow authenticated users to create timelogs
+        return request.user and request.user.is_authenticated
+    
     def has_object_permission(self, request, view, obj):
         user = request.user
         if user.role in ['admin', 'manager']:
@@ -17,20 +21,25 @@ class TimeLogViewSet(viewsets.ModelViewSet):
     serializer_class = TimeLogSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminManagerOrOwner]
 
-    def perform_create(self, serializer):
-        try:
-            # Check if user has already logged time for this task
+    def create(self, request, *args, **kwargs):
+        # Check if user has already logged time for this task
+        task_id = request.data.get('task')
+        if task_id:
             existing_log = TimeLog.objects.filter(
-                task=serializer.validated_data['task'],
-                user=self.request.user
+                task_id=task_id,
+                user=request.user
             ).first()
             
             if existing_log:
-                raise IntegrityError("You have already logged time for this task.")
-            
-            serializer.save(user=self.request.user)
-        except IntegrityError as e:
-            raise IntegrityError("You have already logged time for this task.")
+                return Response(
+                    {'error': 'You have already logged time for this task.'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        return super().create(request, *args, **kwargs)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     def get_queryset(self):
         user = self.request.user

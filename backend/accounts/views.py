@@ -95,19 +95,105 @@ class TeamListView(APIView):
 class ManagerTeamView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
+        # Check if user is authenticated
+        if not request.user or not hasattr(request.user, 'role'):
+            return Response(
+                {'detail': 'Authentication required.'}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
         # Only managers can view their team
         if request.user.role != 'manager':
-            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {'detail': f'Only managers can access team information. Your role: {request.user.role}'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
         
-        # Get teams managed by this manager
-        managed_teams = request.user.managed_teams.all()
-        if not managed_teams.exists():
-            return Response({'detail': 'No teams assigned to this manager.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            # Get teams managed by this manager
+            managed_teams = request.user.managed_teams.all()
+            
+            # Log for debugging
+            print(f"User {request.user.username} (role: {request.user.role}) manages {managed_teams.count()} teams")
+            
+            # Get all team members from managed teams
+            team_members = User.objects.filter(team__in=managed_teams).select_related('team')
+            
+            print(f"Found {team_members.count()} team members")
+            
+            # Return empty list if no team members (this is valid)
+            serializer = UserDetailSerializer(team_members, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"Error in ManagerTeamView: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'detail': f'Error fetching team data: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# Add a debug endpoint to help troubleshoot
+class DebugManagerTeamView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        debug_info = {
+            'current_user': {
+                'id': user.id,
+                'username': user.username,
+                'role': user.role,
+                'team': user.team.name if user.team else None,
+                'team_id': user.team.id if user.team else None
+            },
+            'managed_teams': [],
+            'team_members': [],
+            'all_teams': [],
+            'all_users': []
+        }
         
-        # Get all team members from managed teams
+        # Get managed teams
+        managed_teams = user.managed_teams.all()
+        for team in managed_teams:
+            debug_info['managed_teams'].append({
+                'id': team.id,
+                'name': team.name,
+                'manager': team.manager.username,
+                'member_count': team.members.count()
+            })
+        
+        # Get team members
         team_members = User.objects.filter(team__in=managed_teams)
-        serializer = UserDetailSerializer(team_members, many=True)
-        return Response(serializer.data)
+        for member in team_members:
+            debug_info['team_members'].append({
+                'id': member.id,
+                'username': member.username,
+                'role': member.role,
+                'team': member.team.name if member.team else None
+            })
+        
+        # Get all teams for reference
+        all_teams = Team.objects.all()
+        for team in all_teams:
+            debug_info['all_teams'].append({
+                'id': team.id,
+                'name': team.name,
+                'manager': team.manager.username,
+                'member_count': team.members.count()
+            })
+        
+        # Get all users for reference
+        all_users = User.objects.all()
+        for u in all_users:
+            debug_info['all_users'].append({
+                'id': u.id,
+                'username': u.username,
+                'role': u.role,
+                'team': u.team.name if u.team else None
+            })
+        
+        return Response(debug_info)
 
 class TeamCreateView(APIView):
     permission_classes = [IsAuthenticated]

@@ -24,7 +24,7 @@ const Projects = () => {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/projects/');
+      const response = await axios.get('/projects/projects/');
       setProjects(response.data);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -38,7 +38,7 @@ const Projects = () => {
     e.preventDefault();
     
     try {
-      await axios.post('/projects/', projectForm);
+      await axios.post('/projects/projects/', projectForm);
       setProjectForm({ name: '', description: '', start_date: '', end_date: '' });
       setShowCreateForm(false);
       fetchProjects(); // Refresh the list

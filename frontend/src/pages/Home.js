@@ -35,8 +35,8 @@ const Home = () => {
     try {
       setLoading(true);
       const [projectsRes, tasksRes] = await Promise.all([
-        axios.get('/projects/'),
-        axios.get('/tasks/')
+        axios.get('/projects/projects/'),
+        axios.get('/projects/tasks/')
       ]);
       
       const projects = projectsRes.data;

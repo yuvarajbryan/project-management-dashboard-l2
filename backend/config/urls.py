@@ -20,9 +20,9 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('admin/', admin.site.urls),  # Standard admin URL
     path('', include('core.urls')),  # Root URL handler
     path('api/', include('core.urls')),  # Core API endpoints
-    path('api/admin/', admin.site.urls),
     path('api/accounts/', include('accounts.urls')),
     path('api/projects/', include('projects.urls')),
     path('api/timelogs/', include('timelogs.urls')),

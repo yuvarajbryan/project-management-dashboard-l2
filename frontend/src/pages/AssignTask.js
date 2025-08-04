@@ -28,7 +28,7 @@ const AssignTask = () => {
       setLoading(true);
       const [userRes, projectsRes] = await Promise.all([
         axios.get(`/accounts/users/${userId}/`),
-        axios.get('/projects/')
+        axios.get('/projects/projects/')
       ]);
       setTargetUser(userRes.data);
       setProjects(projectsRes.data);
@@ -44,7 +44,7 @@ const AssignTask = () => {
     e.preventDefault();
     
     try {
-      await axios.post('/tasks/', {
+      await axios.post('/projects/tasks/', {
         ...taskForm,
         assigned_to: userId
       });

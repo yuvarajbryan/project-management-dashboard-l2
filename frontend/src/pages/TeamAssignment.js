@@ -12,7 +12,7 @@ const TeamAssignment = () => {
   const [error, setError] = useState('');
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [showAssignUser, setShowAssignUser] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
+
   const [teamForm, setTeamForm] = useState({
     name: '',
     manager: ''
