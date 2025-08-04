@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
-    '.railway.app',  # Allow Railway domains
+    '.onrender.com',  # Allow Render domains
     'localhost',
     '127.0.0.1'
 ]
