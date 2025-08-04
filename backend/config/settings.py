@@ -234,6 +234,7 @@ if FRONTEND_URL:
     CORS_ALLOWED_ORIGINS.append(FRONTEND_URL.rstrip('/'))
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Keep security, only allow specific origins
 
 CORS_ALLOW_METHODS = [
     'DELETE',
