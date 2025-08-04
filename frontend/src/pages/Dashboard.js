@@ -22,8 +22,8 @@ const Dashboard = () => {
     try {
       // Fetch projects and tasks based on user role
       const [projectsRes, tasksRes] = await Promise.all([
-        axios.get('/projects/'),
-        axios.get('/tasks/')
+        axios.get('/projects/projects/'),
+        axios.get('/projects/tasks/')
       ]);
 
       const projects = projectsRes.data;

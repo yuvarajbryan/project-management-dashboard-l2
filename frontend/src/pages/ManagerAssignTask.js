@@ -26,27 +26,44 @@ const ManagerAssignTask = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [userRes, projectsRes, teamRes] = await Promise.all([
-        axios.get(`/accounts/users/${userId}/`),
-        axios.get('/projects/'),
-        axios.get('/accounts/manager/team/')
-      ]);
+      setError('');
+
+      // First check if the user exists and get their details
+      const userRes = await axios.get(`/accounts/users/${userId}/`);
+      if (!userRes.data) {
+        throw new Error('User not found');
+      }
+      setTargetUser(userRes.data);
+
+      // Then get the manager's team members
+      const teamRes = await axios.get('/accounts/manager/team/');
+      const teamMembers = teamRes.data;
       
       // Check if the target user is in the manager's team
-      const teamMembers = teamRes.data;
       const isTeamMember = teamMembers.some(member => member.id === parseInt(userId));
-      
       if (!isTeamMember) {
-        setError('You can only assign tasks to your team members.');
-        setLoading(false);
-        return;
+        throw new Error('This user is not in your team');
       }
-      
-      setTargetUser(userRes.data);
+
+      // Finally get the projects
+      const projectsRes = await axios.get('/projects/projects/');
+      if (!projectsRes.data) {
+        throw new Error('No projects found');
+      }
       setProjects(projectsRes.data);
+
     } catch (error) {
       console.error('Error fetching data:', error);
-      setError('Failed to load data or user is not in your team');
+      if (error.response?.status === 403) {
+        setError('You do not have permission to perform this action');
+      } else if (error.response?.status === 404) {
+        setError('User not found');
+      } else if (error.message) {
+        setError(error.message);
+      } else {
+        setError('Failed to load data. Please try again.');
+      }
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -54,18 +71,46 @@ const ManagerAssignTask = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!taskForm.project) {
+      alert('Please select a project');
+      return;
+    }
     
     try {
-      await axios.post('/tasks/', {
-        ...taskForm,
-        assigned_to: userId
-      });
+      const formData = {
+        title: taskForm.title,
+        description: taskForm.description || '',
+        project: parseInt(taskForm.project),
+        assigned_to: parseInt(userId),
+        status: taskForm.status
+      };
+
+      if (taskForm.due_date) {
+        formData.due_date = taskForm.due_date;
+      }
+
+      console.log('Sending task data:', formData); // Debug log
+
+      const response = await axios.post('/projects/tasks/', formData);
       
-      alert('Task assigned successfully!');
-      navigate('/team');
+      if (response.data) {
+        alert('Task assigned successfully!');
+        navigate('/team');
+      }
     } catch (error) {
-      console.error('Error assigning task:', error);
-      alert('Failed to assign task');
+      console.error('Error assigning task:', error.response || error);
+      if (error.response?.data?.detail) {
+        alert(error.response.data.detail);
+      } else if (error.response?.data) {
+        // Handle field-specific errors
+        const errors = Object.entries(error.response.data)
+          .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+          .join('\n');
+        alert(`Failed to assign task:\n${errors}`);
+      } else {
+        alert('Failed to assign task. Please try again.');
+      }
     }
   };
 
@@ -189,16 +234,17 @@ const ManagerAssignTask = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Project
+                    Project *
                   </label>
                   <select
                     name="project"
+                    required
                     className="input-field"
                     value={taskForm.project}
                     onChange={handleChange}
                   >
                     <option value="">Select a project</option>
-                    {projects.map((project) => (
+                    {Array.isArray(projects) && projects.map((project) => (
                       <option key={project.id} value={project.id}>
                         {project.name}
                       </option>
@@ -296,4 +342,4 @@ const ManagerAssignTask = () => {
   );
 };
 
-export default ManagerAssignTask; 
+export default ManagerAssignTask;

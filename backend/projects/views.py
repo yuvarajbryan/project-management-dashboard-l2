@@ -11,12 +11,12 @@ class IsAdminManagerOrOwner(permissions.BasePermission):
             return True
         if user.role == 'manager':
             # Managers can only access their team members' tasks
-            if hasattr(obj, 'assigned_to'):
+            if hasattr(obj, 'assigned_to') and obj.assigned_to:
                 return user.is_team_member(obj.assigned_to)
             return True
         if hasattr(obj, 'owner'):
             return obj.owner == user
-        if hasattr(obj, 'assigned_to'):
+        if hasattr(obj, 'assigned_to') and obj.assigned_to:
             return obj.assigned_to == user
         return False
 
@@ -50,18 +50,34 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         
+        print(f"TaskViewSet.perform_create - User: {user.username} ({user.role})")
+        print(f"Validated data: {serializer.validated_data}")
+        
         # If it's a manager, check if they're assigning to their team member
         if user.role == 'manager':
-            assigned_to_id = serializer.validated_data.get('assigned_to')
-            if assigned_to_id:
-                try:
-                    assigned_user = User.objects.get(id=assigned_to_id)
-                    if not user.is_team_member(assigned_user):
-                        raise PermissionDenied("You can only assign tasks to your team members.")
-                except User.DoesNotExist:
-                    raise PermissionDenied("User not found.")
+            assigned_to_data = serializer.validated_data.get('assigned_to')
+            print(f"Assigned to data: {assigned_to_data}, type: {type(assigned_to_data)}")
+            
+            if assigned_to_data:
+                # assigned_to_data might be a User object or an ID
+                if isinstance(assigned_to_data, User):
+                    assigned_user = assigned_to_data
+                else:
+                    try:
+                        assigned_user = User.objects.get(id=assigned_to_data)
+                    except (User.DoesNotExist, ValueError, TypeError):
+                        raise PermissionDenied("Invalid user assignment.")
+                
+                print(f"Checking if {user.username} can assign to {assigned_user.username}")
+                print(f"Manager teams: {list(user.managed_teams.all())}")
+                print(f"Assigned user team: {assigned_user.team}")
+                
+                if not user.is_team_member(assigned_user):
+                    raise PermissionDenied(f"You can only assign tasks to your team members. {assigned_user.username} is not in your team.")
         
-        serializer.save()
+        # Save the task
+        task = serializer.save()
+        print(f"Task created: {task.title} assigned to {task.assigned_to}")
 
     def get_queryset(self):
         user = self.request.user

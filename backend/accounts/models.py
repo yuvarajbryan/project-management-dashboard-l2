@@ -21,7 +21,7 @@ class User(AbstractUser):
 
     def get_team_members(self):
         """Get all team members if user is a manager"""
-        if self.role == 'manager' and hasattr(self, 'managed_teams'):
+        if self.role == 'manager':
             return User.objects.filter(team__in=self.managed_teams.all())
         elif self.team:
             return User.objects.filter(team=self.team)
@@ -30,5 +30,8 @@ class User(AbstractUser):
     def is_team_member(self, other_user):
         """Check if another user is in the same team"""
         if self.role == 'manager':
-            return other_user.team in self.managed_teams.all()
-        return self.team == other_user.team
+            # Check if other_user's team is among the teams this manager manages
+            if other_user.team:
+                return self.managed_teams.filter(id=other_user.team.id).exists()
+            return False
+        return self.team == other_user.team and self.team is not None

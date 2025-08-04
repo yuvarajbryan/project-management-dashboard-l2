@@ -24,15 +24,38 @@ const TimeLog = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError('');
+      
+      console.log('Fetching tasks and time logs...');
+      
       const [tasksRes, logsRes] = await Promise.all([
-        axios.get('/tasks/'),
+        axios.get('/projects/tasks/'),
         axios.get('/timelogs/')
       ]);
-      setTasks(tasksRes.data);
-      setTimeLogs(logsRes.data);
+      
+      console.log('Tasks response:', tasksRes.data);
+      console.log('Time logs response:', logsRes.data);
+      
+      // Ensure data is arrays
+      const tasksData = Array.isArray(tasksRes.data) ? tasksRes.data : [];
+      const logsData = Array.isArray(logsRes.data) ? logsRes.data : [];
+      
+      setTasks(tasksData);
+      setTimeLogs(logsData);
+      
     } catch (error) {
       console.error('Error fetching data:', error);
-      setError('Failed to load data');
+      
+      let errorMessage = 'Failed to load data';
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        errorMessage = error.response.data?.detail || `HTTP ${error.response.status}: ${error.response.statusText}`;
+      }
+      
+      setError(errorMessage);
+      // Set empty arrays on error
+      setTasks([]);
+      setTimeLogs([]);
     } finally {
       setLoading(false);
     }
@@ -40,6 +63,10 @@ const TimeLog = () => {
 
   // Check if a task has already been logged by the current user
   const isTaskLogged = (taskId) => {
+    if (!Array.isArray(timeLogs)) {
+      console.warn('timeLogs is not an array:', timeLogs);
+      return false;
+    }
     return timeLogs.some(log => log.task === taskId);
   };
 
@@ -109,7 +136,7 @@ const TimeLog = () => {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
-                {user?.username}
+                {user?.username} ({user?.role})
               </span>
               <button
                 onClick={() => navigate('/dashboard')}
@@ -144,15 +171,23 @@ const TimeLog = () => {
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
+              <p className="font-medium">Error:</p>
+              <p>{error}</p>
             </div>
           )}
 
           {/* Available Tasks */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Available Tasks</h3>
-            {tasks.length === 0 ? (
-              <p className="text-gray-500">No tasks available.</p>
+            {!Array.isArray(tasks) || tasks.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No tasks available.</p>
+                {!Array.isArray(tasks) && (
+                  <p className="text-red-500 text-sm mt-2">
+                    Invalid tasks data received from server.
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="grid gap-4">
                 {tasks.map((task) => (
@@ -161,6 +196,9 @@ const TimeLog = () => {
                       <div>
                         <h4 className="font-semibold text-gray-900">{task.title}</h4>
                         <p className="text-gray-600 text-sm">{task.description}</p>
+                        <p className="text-gray-500 text-xs mt-1">
+                          Status: <span className="capitalize">{task.status}</span>
+                        </p>
                       </div>
                       {isTaskLogged(task.id) ? (
                         <div className="flex items-center space-x-2">
@@ -193,18 +231,25 @@ const TimeLog = () => {
           {/* Recent Time Logs */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Time Logs</h3>
-            {timeLogs.length === 0 ? (
-              <p className="text-gray-500">No time logs found.</p>
+            {!Array.isArray(timeLogs) || timeLogs.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No time logs found.</p>
+                {!Array.isArray(timeLogs) && (
+                  <p className="text-red-500 text-sm mt-2">
+                    Invalid time logs data received from server.
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="grid gap-4">
                 {timeLogs.map((log) => (
                   <div key={log.id} className="card">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-semibold text-gray-900">{log.task_title}</h4>
+                        <h4 className="font-semibold text-gray-900">{log.task_title || 'Unknown Task'}</h4>
                         <p className="text-gray-600 text-sm">{log.description}</p>
                         <p className="text-gray-500 text-xs mt-1">
-                          {new Date(log.created_at).toLocaleDateString()}
+                          {log.created_at ? new Date(log.created_at).toLocaleDateString() : 'Unknown date'}
                         </p>
                       </div>
                       <div className="text-right">
@@ -282,4 +327,4 @@ const TimeLog = () => {
   );
 };
 
-export default TimeLog; 
+export default TimeLog;

@@ -19,13 +19,17 @@ export const AuthProvider = ({ children }) => {
   // Configure axios defaults
   axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-  // Add token to requests if it exists
-  useEffect(() => {
+  const setAuthToken = (token) => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
       delete axios.defaults.headers.common['Authorization'];
     }
+  };
+
+  // Add token to requests if it exists
+  useEffect(() => {
+    setAuthToken(token);
   }, [token]);
 
   // Check if user is authenticated on app load
@@ -54,12 +58,17 @@ export const AuthProvider = ({ children }) => {
       });
       
       const { access, refresh } = response.data;
+      
+      // Set token in axios headers first
+      setAuthToken(access);
+      
+      // Then get user details
+      const userResponse = await axios.get('/accounts/me/');
+      
+      // If user details successful, update state and storage
       localStorage.setItem('token', access);
       localStorage.setItem('refreshToken', refresh);
       setToken(access);
-      
-      // Get user details
-      const userResponse = await axios.get('/accounts/me/');
       setUser(userResponse.data);
       
       return { success: true };
@@ -77,6 +86,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('refreshToken');
     setToken(null);
     setUser(null);
+    setAuthToken(null);
   };
 
   const register = async (userData) => {
@@ -106,4 +116,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-}; 
+};

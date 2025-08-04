@@ -17,7 +17,7 @@ const Tasks = () => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/tasks/');
+      const response = await axios.get('/projects/tasks/');
       setTasks(response.data);
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -29,7 +29,7 @@ const Tasks = () => {
 
   const handleStatusUpdate = async (taskId, newStatus) => {
     try {
-      await axios.patch(`/tasks/${taskId}/`, { status: newStatus });
+      await axios.patch(`/projects/tasks/${taskId}/`, { status: newStatus });
       fetchTasks(); // Refresh the list
     } catch (error) {
       console.error('Error updating task:', error);
