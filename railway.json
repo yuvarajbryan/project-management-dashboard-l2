@@ -1,0 +1,24 @@
+{
+  "schema": "2",
+  "services": {
+    "backend": {
+      "path": "backend",
+      "dockerfile": "backend/Dockerfile",
+      "startCommand": "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn config.wsgi",
+      "healthcheck": {
+        "path": "/api/health/",
+        "interval": "30s",
+        "timeout": "10s"
+      }
+    },
+    "frontend": {
+      "path": "frontend",
+      "dockerfile": "frontend/Dockerfile",
+      "healthcheck": {
+        "path": "/",
+        "interval": "30s",
+        "timeout": "10s"
+      }
+    }
+  }
+}
